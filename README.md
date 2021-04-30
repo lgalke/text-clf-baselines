@@ -8,8 +8,7 @@ some transformers and plain MLPs.
 1. Make sure that the data is placed into a subfolder `./data` in the exact same
    format as here: [https://github.com/iworldtong/text_gcn.pytorch/tree/master/data](https://github.com/iworldtong/text_gcn.pytorch/tree/master/data)
 
-2. Double check for other static paths, I already adjusted `CACHE_DIR` in
-   `data.py` to be relative: `tmp/cache`, but their might be others.
+2. Double check for other static paths,  `CACHE_DIR` in `data.py` is already adjust to be relative: `tmp/cache`, but there might more
 
 3. Check for dependencies (unfortunately, there is no requirements.txt file),
    but you need `numpy`, `torch`, `torch_geometric`, `transformers`, `tqdm`, `joblib`

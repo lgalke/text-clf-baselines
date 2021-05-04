@@ -1,4 +1,4 @@
-# gnlp
+# Simple yet Strong Baselines for Text-Classification
 
 **Key point:** Re-run experiments on TextGCN datasets, but compare TextGCN with
 some transformers and plain MLPs.

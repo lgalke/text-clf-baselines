@@ -23,15 +23,22 @@ from transformers import (WEIGHTS_NAME, AdamW, AutoTokenizer, BertConfig,
                           BertForSequenceClassification, BertModel,
                           BertTokenizer, DistilBertConfig,
                           DistilBertForSequenceClassification, DistilBertModel,
-                          DistilBertTokenizer, RobertaConfig,
-                          RobertaForSequenceClassification, RobertaModel,
-                          RobertaTokenizer, WarmupLinearSchedule, XLMConfig,
-                          XLMForSequenceClassification, XLMModel, XLMTokenizer,
-                          XLNetConfig, XLNetForSequenceClassification,
-                          XLNetModel, XLNetTokenizer)
+                          DistilBertTokenizer, get_linear_schedule_with_warmup)
+
+from transformers import DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST,\
+    BERT_PRETRAINED_MODEL_ARCHIVE_LIST
+
 
 from data import load_data
 from models import GCN, MLP, TransformerForNodeClassification, collate_for_mlp
+
+try:
+    import wandb
+    WANDB = True
+except ImportError:
+    print("WandB not installed, to track experiments: pip install wandb")
+    WANDB = False
+
 
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -45,13 +52,15 @@ MEMORY = Memory(CACHE_DIR, verbose=2)
 
 VALID_DATASETS = [ '20ng', 'R8', 'R52', 'ohsumed', 'mr'] + ['TREC', 'wiki']
 
-ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig, 
-                                                                                RobertaConfig, DistilBertConfig)), ())
+# ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig,
+#                                                                                 RobertaConfig, DistilBertConfig)), ())
+
+ALL_MODELS = BERT_PRETRAINED_MODEL_ARCHIVE_LIST + DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertModel),
-    'xlnet': (XLNetConfig, XLNetForSequenceClassification, XLNetModel),
-    'xlm': (XLMConfig, XLMForSequenceClassification, XLMModel),
-    'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaModel),
+    # 'xlnet': (XLNetConfig, XLNetForSequenceClassification, XLNetModel),
+    # 'xlm': (XLMConfig, XLMForSequenceClassification, XLMModel),
+    # 'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaModel),
     'distilbert': (DistilBertConfig, DistilBertForSequenceClassification, DistilBertModel)
 }
 
@@ -64,7 +73,7 @@ def pad(seqs, with_token=0, to_length=None):
 
 def get_collate_for_transformer(pad_token_id):
     """ Closure to include padding in collate function """
-    def _collate_for_transformer(examples): 
+    def _collate_for_transformer(examples):
         docs, labels = list(zip(*examples))
         input_ids = torch.tensor(pad(docs, with_token=pad_token_id))
         attention_mask = torch.ones_like(input_ids, dtype=torch.long)
@@ -91,7 +100,8 @@ def train(args,  train_data, model, tokenizer):
     t_total = len(train_loader) // args.gradient_accumulation_steps * args.epochs
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
-    scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)  
+    # scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
     writer = SummaryWriter()
 
     # Train!
@@ -133,12 +143,20 @@ def train(args,  train_data, model, tokenizer):
                 model.zero_grad()
                 global_step += 1
             if args.logging_steps > 0 and global_step % args.logging_steps == 0:
-                # if args.evaluate_during_training: 
+                # if args.evaluate_during_training:
                 #     results = evaluate(args, dev_data, model, tokenizer)
                 #     for key, value in results.items():
                 #         tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
-                writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
-                writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
+
+                current_lr = scheduler.get_last_lr()[0]
+                avg_loss = (tr_loss - logging_loss)/ args.logging_steps
+
+                writer.add_scalar('lr', current_lr, global_step)
+                writer.add_scalar('loss', avg_loss, global_step)
+
+                if WANDB:
+                    wandb.log({'lr': current_lr,
+                               'loss': avg_loss})
                 logging_loss = tr_loss
 
     writer.close()
@@ -187,6 +205,8 @@ def evaluate(args, dev_or_test_data, model, tokenizer):
     eval_loss /= nb_eval_steps
     preds = np.argmax(logits, axis=1)
     acc = (preds == targets).sum() / targets.size
+    if WANDB:
+        wandb.log({"test/acc": acc, "test/loss": eval_loss})
     return acc, eval_loss
 
 
@@ -216,6 +236,9 @@ def run_xy_model(args):
     print("N test", len(test_data))
     print("N classes", len(label2index))
 
+    print("Using tokenizer:", tokenizer_name)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+
     if args.stats_and_exit:
         print("Warning: length stats depend on tokenizer and max_length of model, chose MLP to avoid trimming before computing stats.")
         exit(0)
@@ -238,7 +261,12 @@ def run_xy_model(args):
         model = MLP(tokenizer.vocab_size, len(label2index))
 
     model.to(args.device)
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+
+
+    if WANDB:
+        wandb.watch(model, log_freq=args.logging_steps)
+
+
     train(args, train_data, model, tokenizer)
     acc, eval_loss = evaluate(args, test_data, model, tokenizer)
     print(f"[{args.dataset}] Test accuracy: {acc:.4f}, Eval loss: {eval_loss}")
@@ -300,11 +328,15 @@ def run_axy_model(args):
     model.to(args.device)
     data.to(args.device)
 
+    if WANDB:
+        wandb.watch(model, log_freq=100)
+
     # TRAIN #
     t_total = args.epochs * args.gradient_accumulation_steps
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
-    scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)  
+    # scheduler = WarmupLinearSchedule(optimizer, warmup_steps=args.warmup_steps, t_total=t_total)
+    scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
     writer = SummaryWriter()
 
     global_step = 0
@@ -333,12 +365,21 @@ def run_axy_model(args):
             model.zero_grad()
             global_step += 1
         if args.logging_steps > 0 and global_step % args.logging_steps == 0:
-            # if args.evaluate_during_training: 
-            #     results = evaluate(args, dev_data, model, tokenizer)
-            #     for key, value in results.items():
-            #         tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
-            writer.add_scalar('lr', scheduler.get_lr()[0], global_step)
-            writer.add_scalar('loss', (tr_loss - logging_loss)/args.logging_steps, global_step)
+            # if args.evaluate_during_training:
+            #     acc, eval_loss = evaluate(args, dev_data, model, tokenizer)
+            #     tb_writer.add_scalar('eval_acc', acc, global_step)
+            #     tb_writer.add_scalar('eval_loss', eval_loss, global_step)
+            #     if WANDB:
+            #         wandb.log({"eval/acc": acc, "eval/loss": eval_loss})
+            current_lr = scheduler.get_last_lr()[0]
+            avg_loss = (tr_loss - logging_loss)/ args.logging_steps
+
+            writer.add_scalar('lr', current_lr, global_step)
+            writer.add_scalar('loss', avg_loss, global_step)
+
+            if WANDB:
+                wandb.log({'lr': current_lr,
+                            'loss': avg_loss})
             logging_loss = tr_loss
 
     writer.close()
@@ -430,6 +471,10 @@ def main():
     args.device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     args.test_batch_size = args.batch_size if args.test_batch_size is None else args.test_batch_size
 
+    if WANDB:
+        wandb.init(project="text-clf")
+        wandb.config.update(args)
+
     acc = {
         'mlp': run_xy_model,
         'bert': run_xy_model,
@@ -440,7 +485,7 @@ def main():
     }[args.model_type](args)
     if args.results_file:
         with open(args.results_file, 'a', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile) 
+            csv_writer = csv.writer(csvfile)
             csv_writer.writerow([args.model_type,args.dataset,acc])
 
 

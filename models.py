@@ -40,6 +40,36 @@ class MLP(nn.Module):
         return logits
 
 
+class WordEmbeddingMLP(nn.Module):
+    """ Word Embedding + MLP """
+    def __init__(self, embeddings, num_classes,
+                 hidden_size=1024, hidden_act='relu',
+                 dropout=0.5, mode='mean'):
+        nn.Module.__init__(self)
+        self.embed = nn.EmbeddingBag.from_pretrained(embeddings, freeze=True)
+        self.lin1 = nn.Linear(embeddings.size(1), hidden_size)
+        self.lin2 = nn.Linear(hidden_size, num_classes)
+        self.act = getattr(F, hidden_act)
+        self.drop = dropout if dropout else None
+        self.loss_function = nn.CrossEntropyLoss()
+
+    def forward(self, input, offsets, labels=None):
+        # Embedding (frozen)
+        embeds = self.embed(input, offsets)
+        # MLP
+        # input-to-hidden
+        h = self.lin1(embeds)
+        h = self.act(h)
+        if self.drop:
+            h = F.dropout(h, p=self.drop, training=self.training)
+        # hidden-to-output
+        logits = self.lin2(h)
+        if labels is not None:
+            loss = self.loss_function(logits, labels)
+            return loss, logits
+        return logits
+
+
 
 class GCN(nn.Module):
     def __init__(self, in_channels, hidden_channels, num_labels,

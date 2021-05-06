@@ -3,6 +3,7 @@ import os.path as osp
 import numpy as np
 import torch
 import torch_geometric
+import zipfile
 from joblib import Memory
 from tqdm import tqdm
 from transformers import AutoTokenizer
@@ -13,20 +14,41 @@ CACHE_DIR = 'tmp/cache'
 MEMORY = Memory(CACHE_DIR, verbose=2)
 VALID_DATASETS = [ '20ng', 'R8', 'R52', 'ohsumed', 'mr'] + ['TREC', 'wiki']
 
-@MEMORY.cache(ignore=['n_jobs'])
-def load_data(key, tokenizer_name, truncate=True, construct_textgraph=False, n_jobs=1):
-    assert key in VALID_DATASETS, f"{key} not in {VALID_DATASETS}"
-    # tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_name if args.tokenizer_name else args.model_name_or_path)
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
+WORD_EMBEDDING_PATH = "/path/to/word/embeddings" # TODO insert path
+
+
+@MEMORY.cache
+def load_word_vectors(path):
+    vocab = dict()
+    vectors = []
+    with zipfile.open(path, mode='r') as myzip:
+        for i, line in tqdm(enumerate(myzip)):
+            word, *vector_str = line.strip().split(' ')
+            if len(vector_str) == 1:
+                print(f"[load_word_vectors] Ignoring row {i+1}: {line}")
+
+            # Parse word vector
+            vector = torch.tensor([float(val) for val in vector_str])
+
+            vocab[word] = len(vocab)
+            vectors.append(vector)
+
+    embedding = torch.stack(vectors)
+
+    return vocab, embedding
+
+
+@MEMORY.cache(ignore=['n_jobs'])
+def load_data(key, tokenizer, truncate=True, construct_textgraph=False, n_jobs=1):
+    assert key in VALID_DATASETS, f"{key} not in {VALID_DATASETS}"
     print("Loading raw documents")
     with open(osp.join('data', 'corpus', key+'.txt'), 'rb') as f:
         raw_documents = [line.strip().decode('latin1') for line in tqdm(f)]
 
     N = len(raw_documents)
 
-    print("First few raw_documents")
-    print(*raw_documents[:5], sep='\n')
+    print("First few raw_documents", *raw_documents[:5], sep='\n')
 
     labels = []
     train_mask, test_mask = torch.zeros(N, dtype=torch.bool), torch.zeros(N, dtype=torch.bool)

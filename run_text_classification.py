@@ -192,11 +192,24 @@ def evaluate(args, dev_or_test_data, model, tokenizer):
 
 def run_xy_model(args):
     print("Loading data...")
-    tokenizer_name = args.tokenizer_name if args.tokenizer_name else args.model_name_or_path
+
+    if args.model_type == "mlp" and args.model_name_or_path is not None:
+        print("Assuming to use word embeddings as both model_type and model_name_or_path are given")
+        use_word_embeddings = True
+        assert args.embedding_path is not None, "Please provide an embedding path for word2vec/glove models"
+
+    if use_word_embeddings:
+        print("Using word embeddings -> forcing wordlevel tokenizer")
+        vocab, embedding = load_word_vectors(args.model_name_or_path)
+        tokenizer = build_tokenizer_for_word_embeddings(vocab)
+    else:
+        tokenizer_name = args.tokenizer_name if args.tokenizer_name else args.model_name_or_path
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
     do_truncate = not (args.stats_and_exit or args.model_type == 'mlp')
+
     enc_docs, enc_labels, train_mask, test_mask, label2index = load_data(args.dataset,
-                                                                         tokenizer_name,
+                                                                         tokenizer,
                                                                          truncate=do_truncate,
                                                                          construct_textgraph=False,
                                                                          n_jobs=args.num_workers)
@@ -235,7 +248,13 @@ def run_xy_model(args):
                                             cache_dir=CACHE_DIR)
     else:
         print("Initializing MLP")
-        model = MLP(tokenizer.vocab_size, len(label2index))
+
+        if use_word_embeddings:
+            print("Model: Word embeddings + MLP")
+            model = WordEmbeddingMLP(embeddings, len(label2index))
+        else:
+            print("Model: Plain MLP")
+            model = MLP(tokenizer.vocab_size, len(label2index))
 
     model.to(args.device)
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)

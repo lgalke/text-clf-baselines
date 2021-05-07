@@ -19,14 +19,15 @@ WORD_EMBEDDING_PATH = "/path/to/word/embeddings" # TODO insert path
 
 
 @MEMORY.cache
-def load_word_vectors(path):
+def load_word_vectors(path, unk_token=None):
     vocab = dict()
     vectors = []
-    with zipfile.open(path, mode='r') as myzip:
-        for i, line in tqdm(enumerate(myzip)):
+    with open(path, mode='r') as myfile:
+        for i, line in tqdm(enumerate(myfile)):
             word, *vector_str = line.strip().split(' ')
             if len(vector_str) == 1:
                 print(f"[load_word_vectors] Ignoring row {i+1}: {line}")
+                continue
 
             # Parse word vector
             vector = torch.tensor([float(val) for val in vector_str])
@@ -34,13 +35,23 @@ def load_word_vectors(path):
             vocab[word] = len(vocab)
             vectors.append(vector)
 
+
+    if unk_token:
+        print(f"Adding UNK token: '{unk_token}'")
+        assert isinstance(unk_token, str), "Unk token needs to be str"
+        assert unk_token not in vocab, "Unk token may not be in vocab"
+        vocab[unk_token] = len(vocab)
+        vectors.append(torch.zeros_like(vectors[0]))
+
+
     embedding = torch.stack(vectors)
 
     return vocab, embedding
 
 
 @MEMORY.cache(ignore=['n_jobs'])
-def load_data(key, tokenizer, truncate=True, construct_textgraph=False, n_jobs=1):
+def load_data(key, tokenizer, truncate=True, construct_textgraph=False, n_jobs=1,
+              force_lowercase=False):
     assert key in VALID_DATASETS, f"{key} not in {VALID_DATASETS}"
     print("Loading raw documents")
     with open(osp.join('data', 'corpus', key+'.txt'), 'rb') as f:
@@ -69,9 +80,13 @@ def load_data(key, tokenizer, truncate=True, construct_textgraph=False, n_jobs=1
     assert len(labels) == N
     # raw_documents, labels, train_mask, test_mask defined
 
-    max_length = tokenizer.max_len if truncate else None
-    print(f"Encoding documents with max_length={max_length}...")
-    docs = [tokenizer.encode(raw_doc, max_length=max_length) for raw_doc in raw_documents]
+    if truncate:
+        max_length = tokenizer.max_len
+        print(f"Encoding documents with max_length={max_length}...")
+        docs = [tokenizer.encode(raw_doc, max_length=max_length) for raw_doc in raw_documents]
+    else:
+        print(f"Encoding documents without max_length")
+        docs = tokenizer.encode_batch(raw_documents)
 
     print("Encoding labels...")
     label2index = {label: idx for idx, label in enumerate(set(labels))}

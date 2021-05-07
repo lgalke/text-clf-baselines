@@ -2,6 +2,26 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_geometric as tg
+import tokenizers
+
+
+# def collate_encoding_for_mlp(examples):
+#     encodings, labels = zip(*examples)
+#     batch = tokenizers.Encoding.merge(encodings, growing_offsets=True)
+#     # we dont need end positions
+#     offsets, __ = zip(*batch.offsets)
+
+#     offset = 0
+#     flat_docs, offsets, labels = [], [], []
+#     for doc, label in list_of_samples:
+
+#         offsets.append(offset)
+#         flat_docs.extend(doc)
+#         labels.append(label)
+#         offset += len(doc)
+
+#     return torch.tensor(batch.ids), torch.tensor(offsets), torch.tensor(labels)
+
 
 
 def collate_for_mlp(list_of_samples):
@@ -9,6 +29,8 @@ def collate_for_mlp(list_of_samples):
     offset = 0
     flat_docs, offsets, labels = [], [], []
     for doc, label in list_of_samples:
+        if isinstance(doc, tokenizers.Encoding):
+            doc = doc.ids
         offsets.append(offset)
         flat_docs.extend(doc)
         labels.append(label)

@@ -29,8 +29,10 @@ from transformers import DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST,\
     BERT_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
-from data import load_data
+from tokenization import build_tokenizer_for_word_embeddings
+from data import load_data, load_word_vectors
 from models import GCN, MLP, TransformerForNodeClassification, collate_for_mlp
+from models import WordEmbeddingMLP
 
 try:
     import wandb
@@ -86,6 +88,11 @@ def get_collate_for_transformer(pad_token_id):
 
 def train(args,  train_data, model, tokenizer):
     if args.model_type == 'mlp':
+        # if args.model_name_or_path is not None:
+        #     # Embedding case, use optimized merging from tokenizer lib
+        #     collate_fn = collate_encoding_for_mlp
+        # else:
+        #     # Manual collate with offsets
         collate_fn = collate_for_mlp
     else:
         collate_fn = get_collate_for_transformer(tokenizer.pad_token_id)
@@ -118,7 +125,7 @@ def train(args,  train_data, model, tokenizer):
     tr_loss, logging_loss = 0.0, 0.0
     model.zero_grad()
     train_iterator = trange(args.epochs, desc="Epoch")
-    for _  in train_iterator:
+    for epoch in train_iterator:
         epoch_iterator = tqdm(train_loader, desc="Iteration")
         for step, batch in enumerate(epoch_iterator):
             model.train()
@@ -142,21 +149,20 @@ def train(args,  train_data, model, tokenizer):
                 scheduler.step()
                 model.zero_grad()
                 global_step += 1
+                if WANDB:
+                    wandb.log({'epoch': epoch,
+                               'lr': scheduler.get_last_lr()[0],
+                               'loss': loss})
+
             if args.logging_steps > 0 and global_step % args.logging_steps == 0:
                 # if args.evaluate_during_training:
                 #     results = evaluate(args, dev_data, model, tokenizer)
                 #     for key, value in results.items():
                 #         tb_writer.add_scalar('eval_{}'.format(key), value, global_step)
 
-                current_lr = scheduler.get_last_lr()[0]
                 avg_loss = (tr_loss - logging_loss)/ args.logging_steps
-
-                writer.add_scalar('lr', current_lr, global_step)
+                writer.add_scalar('lr', scheduler.get_last_lr()[0], global_step)
                 writer.add_scalar('loss', avg_loss, global_step)
-
-                if WANDB:
-                    wandb.log({'lr': current_lr,
-                               'loss': avg_loss})
                 logging_loss = tr_loss
 
     writer.close()
@@ -214,17 +220,19 @@ def run_xy_model(args):
     print("Loading data...")
 
     if args.model_type == "mlp" and args.model_name_or_path is not None:
-        print("Assuming to use word embeddings as both model_type and model_name_or_path are given")
+        print("Assuming to use word embeddings as both model_type=mlp and model_name_or_path are given")
         use_word_embeddings = True
-        assert args.embedding_path is not None, "Please provide an embedding path for word2vec/glove models"
+    else:
+        use_word_embeddings = False
 
     if use_word_embeddings:
         print("Using word embeddings -> forcing wordlevel tokenizer")
-        vocab, embedding = load_word_vectors(args.model_name_or_path)
+        vocab, embedding = load_word_vectors(args.model_name_or_path, unk_token="[UNK]")
         tokenizer = build_tokenizer_for_word_embeddings(vocab)
     else:
         tokenizer_name = args.tokenizer_name if args.tokenizer_name else args.model_name_or_path
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    print("Using tokenizer:", tokenizer)
 
     do_truncate = not (args.stats_and_exit or args.model_type == 'mlp')
 
@@ -249,8 +257,6 @@ def run_xy_model(args):
     print("N test", len(test_data))
     print("N classes", len(label2index))
 
-    print("Using tokenizer:", tokenizer_name)
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
 
     if args.stats_and_exit:
         print("Warning: length stats depend on tokenizer and max_length of model, chose MLP to avoid trimming before computing stats.")
@@ -274,7 +280,7 @@ def run_xy_model(args):
 
         if use_word_embeddings:
             print("Model: Word embeddings + MLP")
-            model = WordEmbeddingMLP(embeddings, len(label2index))
+            model = WordEmbeddingMLP(embedding, len(label2index))
         else:
             print("Model: Plain MLP")
             model = MLP(tokenizer.vocab_size, len(label2index))
@@ -483,7 +489,7 @@ def main():
     args = parser.parse_args()
 
     if args.model_type in ['mlp', 'textgcn']:
-        assert args.tokenizer_name, "Please supply tokenizer for MLP via --tokenizer_name"
+        assert args.tokenizer_name or args.model_name_or_path, "Please supply tokenizer for MLP via --tokenizer_name or provide an embedding via --model_name_or_path"
     else:
         assert args.model_name_or_path, f"Please supply --model_name_or_path for {args.model_type}"
 

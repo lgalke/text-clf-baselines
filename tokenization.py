@@ -7,7 +7,8 @@ from tokenizers.pre_tokenizers import Whitespace
 
 def build_tokenizer_for_word_embeddings(vocab):
     """ Build a word level tokenizer for word embeddings """
-    tokenizer = WordLevel(vocab)
-    tokenizer.normalizer = normalizers.Sequence(NFD(), Lowercase(), StripAccents())
+    model = WordLevel(vocab, "[UNK]")
+    tokenizer = Tokenizer(model)
+    tokenizer.normalizer = normalizers.Sequence([NFD(), Lowercase(), StripAccents()])
     tokenizer.pre_tokenizer = Whitespace()
     return tokenizer

@@ -86,7 +86,7 @@ def load_data(key, tokenizer, truncate=True, construct_textgraph=False, n_jobs=1
         docs = [tokenizer.encode(raw_doc, max_length=max_length) for raw_doc in raw_documents]
     else:
         print(f"Encoding documents without max_length")
-        docs = tokenizer.encode_batch(raw_documents)
+        docs = [tokenizer.encode(raw_doc) for raw_doc in raw_documents]
 
     print("Encoding labels...")
     label2index = {label: idx for idx, label in enumerate(set(labels))}

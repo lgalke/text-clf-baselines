@@ -10,6 +10,9 @@ import csv
 import itertools as it
 import logging
 
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -29,6 +32,7 @@ from transformers import DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST,\
     BERT_PRETRAINED_MODEL_ARCHIVE_LIST
 
 
+from sklearn.metrics import f1_score
 from tokenization import build_tokenizer_for_word_embeddings
 from data import load_data, load_word_vectors
 from models import GCN, MLP, TransformerForNodeClassification, collate_for_mlp
@@ -211,8 +215,14 @@ def evaluate(args, dev_or_test_data, model, tokenizer):
     eval_loss /= nb_eval_steps
     preds = np.argmax(logits, axis=1)
     acc = (preds == targets).sum() / targets.size
+
+    f1_micro = f1_score(targets, preds, average='micro')
+    f1_macro = f1_score(targets, preds, average='macro', zero_division=1)
+
     if WANDB:
-        wandb.log({"test/acc": acc, "test/loss": eval_loss})
+        wandb.log({"test/acc": acc, "test/loss": eval_loss,
+                   "test/f1_micro": f1_micro,
+                   "test/f1_macro": f1_macro})
     return acc, eval_loss
 
 
@@ -235,10 +245,17 @@ def run_xy_model(args):
     print("Using tokenizer:", tokenizer)
 
     do_truncate = not (args.stats_and_exit or args.model_type == 'mlp')
+    if args.stats_and_exit:
+        # We only compute dataset stats including length, so NOT truncate
+        max_length = None
+    elif args.model_type == 'mlp':
+        max_length = None
+    else:
+        max_length = 512 # should hold for all used transformer models?
 
     enc_docs, enc_labels, train_mask, test_mask, label2index = load_data(args.dataset,
                                                                          tokenizer,
-                                                                         truncate=do_truncate,
+                                                                         max_length=max_length,
                                                                          construct_textgraph=False,
                                                                          n_jobs=args.num_workers)
     print("Done")

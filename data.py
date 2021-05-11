@@ -50,7 +50,7 @@ def load_word_vectors(path, unk_token=None):
 
 
 @MEMORY.cache(ignore=['n_jobs'])
-def load_data(key, tokenizer, truncate=True, construct_textgraph=False, n_jobs=1,
+def load_data(key, tokenizer, max_length=None, construct_textgraph=False, n_jobs=1,
               force_lowercase=False):
     assert key in VALID_DATASETS, f"{key} not in {VALID_DATASETS}"
     print("Loading raw documents")
@@ -80,8 +80,7 @@ def load_data(key, tokenizer, truncate=True, construct_textgraph=False, n_jobs=1
     assert len(labels) == N
     # raw_documents, labels, train_mask, test_mask defined
 
-    if truncate:
-        max_length = tokenizer.max_len
+    if max_length:
         print(f"Encoding documents with max_length={max_length}...")
         docs = [tokenizer.encode(raw_doc, max_length=max_length) for raw_doc in raw_documents]
     else:

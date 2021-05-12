@@ -39,27 +39,73 @@ def collate_for_mlp(list_of_samples):
 
 class MLP(nn.Module):
     """Simple MLP"""
+    # def __init__(self, vocab_size, num_classes,
+    #              hidden_size=1024, hidden_act='relu',
+    #              dropout=0.5, mode='mean'):
+    #     nn.Module.__init__(self)
+    #     self.embed = nn.EmbeddingBag(vocab_size, hidden_size,
+    #                                  mode=mode)
+    #     self.lin = nn.Linear(hidden_size, num_classes)
+    #     self.act = getattr(F, hidden_act)
+    #     self.drop = dropout if dropout else None
+    #     self.loss_function = nn.CrossEntropyLoss()
+
+    # def forward(self, input, offsets, labels=None):
+    #     h = self.embed(input, offsets)
+    #     h = self.act(h)
+    #     if self.drop:
+    #         h = F.dropout(h, p=self.drop, training=self.training)
+    #     logits = self.lin(h)
+    #     if labels is not None:
+    #         loss = self.loss_function(logits, labels)
+    #         return loss, logits
+    #     return logits
     def __init__(self, vocab_size, num_classes,
+                 num_hidden_layers=1,
                  hidden_size=1024, hidden_act='relu',
                  dropout=0.5, mode='mean'):
         nn.Module.__init__(self)
+
+        # Input-to-hidden (efficient via embedding bag)
         self.embed = nn.EmbeddingBag(vocab_size, hidden_size,
                                      mode=mode)
-        self.lin = nn.Linear(hidden_size, num_classes)
-        self.act = getattr(F, hidden_act)
-        self.drop = dropout if dropout else None
+
+        self.activation = getattr(F, hidden_act)
+        self.dropout = nn.Dropout(dropout)
+        self.layers = nn.ModuleList()
+
+        # Hidden-to-hidden
+        for __ in range(num_hidden_layers - 1):
+            self.layers.append(nn.Linear(hidden_size, hidden_size))
+
+        # Hidden-to-output
+        self.layers.append(nn.Linear(hidden_size, num_classes))
+
+        # Loss function
         self.loss_function = nn.CrossEntropyLoss()
 
     def forward(self, input, offsets, labels=None):
         h = self.embed(input, offsets)
-        h = self.act(h)
-        if self.drop:
-            h = F.dropout(h, p=self.drop, training=self.training)
-        logits = self.lin(h)
+
+        for layer in self.layers:
+            # at least one
+            h = self.activation(h)
+            h = self.dropout(h)
+            h = layer(h)
+
         if labels is not None:
-            loss = self.loss_function(logits, labels)
-            return loss, logits
-        return logits
+            loss = self.loss_function(h, labels)
+            return loss, h
+        return h
+        # h = self.embed(input, offsets)
+        # h = self.act(h)
+        # if self.drop:
+        #     h = F.dropout(h, p=self.drop, training=self.training)
+        # logits = self.lin(h)
+        # if labels is not None:
+        #     loss = self.loss_function(logits, labels)
+        #     return loss, logits
+        # return logits
 
 
 class WordEmbeddingMLP(nn.Module):
@@ -68,7 +114,7 @@ class WordEmbeddingMLP(nn.Module):
                  hidden_size=1024, hidden_act='relu',
                  dropout=0.5, mode='mean'):
         nn.Module.__init__(self)
-        self.embed = nn.EmbeddingBag.from_pretrained(embeddings, freeze=True)
+        self.embed = nn.EmbeddingBag.from_pretrained(embeddings, freeze=True, mode=mode)
         self.lin1 = nn.Linear(embeddings.size(1), hidden_size)
         self.lin2 = nn.Linear(hidden_size, num_classes)
         self.act = getattr(F, hidden_act)

@@ -15,8 +15,6 @@ MEMORY = Memory(CACHE_DIR, verbose=2)
 VALID_DATASETS = [ '20ng', 'R8', 'R52', 'ohsumed', 'mr'] + ['TREC', 'wiki']
 
 
-WORD_EMBEDDING_PATH = "/path/to/word/embeddings" # TODO insert path
-
 
 @MEMORY.cache
 def load_word_vectors(path, unk_token=None):
@@ -59,7 +57,7 @@ def load_data(key, tokenizer, max_length=None, construct_textgraph=False, n_jobs
 
     N = len(raw_documents)
 
-    print("First few raw_documents", *raw_documents[:5], sep='\n')
+    # print("First few raw_documents", *raw_documents[:5], sep='\n')
 
     labels = []
     train_mask, test_mask = torch.zeros(N, dtype=torch.bool), torch.zeros(N, dtype=torch.bool)
@@ -83,6 +81,7 @@ def load_data(key, tokenizer, max_length=None, construct_textgraph=False, n_jobs
     if max_length:
         print(f"Encoding documents with max_length={max_length}...")
         docs = [tokenizer.encode(raw_doc, max_length=max_length) for raw_doc in raw_documents]
+        # docs = tokenizer(raw_documents, truncation=True, max_length=max_length)
     else:
         print(f"Encoding documents without max_length")
         docs = [tokenizer.encode(raw_doc) for raw_doc in raw_documents]

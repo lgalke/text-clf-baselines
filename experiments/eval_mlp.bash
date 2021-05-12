@@ -3,7 +3,6 @@ MODEL_TYPE="mlp"
 # MODEL_NAME_OR_PATH="distilbert-base-uncased"
 TOKENIZER_NAME="bert-base-uncased"
 BATCH_SIZE=16
-GRADIENT_ACCUMULATION_STEPS=10
 EPOCHS=100
 RESULTS_FILE="results_mlp.csv"
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 MODEL_TYPE="distilbert"
 MODEL_NAME_OR_PATH="distilbert-base-uncased"
-BATCH_SIZE=16
-GRADIENT_ACCUMULATION_STEPS=8
-EPOCHS=100
+BATCH_SIZE=64
+GRADIENT_ACCUMULATION_STEPS=2
+EPOCHS=10
 RESULTS_FILE="results_distilbert.csv"
 
 # Stop on error

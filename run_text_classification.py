@@ -53,7 +53,8 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 
 logger = logging.getLogger(__name__)
 USE_CUDA = torch.cuda.is_available()
-CACHE_DIR = '/data21/lgalke/tmp/gnlp'
+# CACHE_DIR = '/data21/lgalke/tmp/gnlp'
+CACHE_DIR = '/media/nvme1n1/lgalke/cache/textclf'
 MEMORY = Memory(CACHE_DIR, verbose=2)
 
 VALID_DATASETS = [ '20ng', 'R8', 'R52', 'ohsumed', 'mr'] + ['TREC', 'wiki']
@@ -300,7 +301,8 @@ def run_xy_model(args):
             model = WordEmbeddingMLP(embedding, len(label2index))
         else:
             print("Model: Plain MLP")
-            model = MLP(tokenizer.vocab_size, len(label2index))
+            model = MLP(tokenizer.vocab_size, len(label2index),
+                        num_hidden_layers=args.mlp_num_layers)
 
     model.to(args.device)
 
@@ -482,7 +484,7 @@ def main():
                         help="Log every X updates steps.")
 
 
-    ## Hyperparameters
+    ## Training Hyperparameters
     parser.add_argument("--learning_rate", default=5e-5, type=float,
                         help="The initial learning rate for Adam.")
     parser.add_argument("--weight_decay", default=0.0, type=float,
@@ -503,6 +505,9 @@ def main():
     parser.add_argument("--stats_and_exit", default=False,
                         action='store_true',
                         help="Print dataset stats and exit.")
+
+    # MLP Params
+    parser.add_argument("--mlp_num_layers", default=1, type=int, help="Number of hidden layers within MLP")
     args = parser.parse_args()
 
     if args.model_type in ['mlp', 'textgcn']:

@@ -75,7 +75,7 @@ class MLP(nn.Module):
 
         if self.idf is not None:
             # In the TF-IDF case: renormalize according to l2 norm
-            h = h / torch.linalg.norm(h, dim=1)
+            h = h / torch.linalg.norm(h, dim=1, keepdim=True)
 
         for layer in self.layers:
             # at least one

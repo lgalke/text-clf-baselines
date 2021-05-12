@@ -37,34 +37,17 @@ def collate_for_mlp(list_of_samples):
         offset += len(doc)
     return torch.tensor(flat_docs), torch.tensor(offsets), torch.tensor(labels)
 
+
 class MLP(nn.Module):
     """Simple MLP"""
-    # def __init__(self, vocab_size, num_classes,
-    #              hidden_size=1024, hidden_act='relu',
-    #              dropout=0.5, mode='mean'):
-    #     nn.Module.__init__(self)
-    #     self.embed = nn.EmbeddingBag(vocab_size, hidden_size,
-    #                                  mode=mode)
-    #     self.lin = nn.Linear(hidden_size, num_classes)
-    #     self.act = getattr(F, hidden_act)
-    #     self.drop = dropout if dropout else None
-    #     self.loss_function = nn.CrossEntropyLoss()
-
-    # def forward(self, input, offsets, labels=None):
-    #     h = self.embed(input, offsets)
-    #     h = self.act(h)
-    #     if self.drop:
-    #         h = F.dropout(h, p=self.drop, training=self.training)
-    #     logits = self.lin(h)
-    #     if labels is not None:
-    #         loss = self.loss_function(logits, labels)
-    #         return loss, logits
-    #     return logits
     def __init__(self, vocab_size, num_classes,
                  num_hidden_layers=1,
                  hidden_size=1024, hidden_act='relu',
-                 dropout=0.5, mode='mean'):
+                 dropout=0.5, idf=None, mode='mean'):
         nn.Module.__init__(self)
+        # Treat TF-IDF mode appropriately
+        mode = 'sum' if idf is not None else mode
+        self.idf = idf
 
         # Input-to-hidden (efficient via embedding bag)
         self.embed = nn.EmbeddingBag(vocab_size, hidden_size,
@@ -85,7 +68,14 @@ class MLP(nn.Module):
         self.loss_function = nn.CrossEntropyLoss()
 
     def forward(self, input, offsets, labels=None):
-        h = self.embed(input, offsets)
+        # Use idf weights if present
+        idf_weights = self.idf[input] if self.idf is not None else None
+
+        h = self.embed(input, offsets, per_index_weights=idf_weights)
+
+        if self.idf is not None:
+            # In the TF-IDF case: renormalize according to l2 norm
+            h = h / torch.linalg.norm(h, dim=1)
 
         for layer in self.layers:
             # at least one
@@ -97,15 +87,6 @@ class MLP(nn.Module):
             loss = self.loss_function(h, labels)
             return loss, h
         return h
-        # h = self.embed(input, offsets)
-        # h = self.act(h)
-        # if self.drop:
-        #     h = F.dropout(h, p=self.drop, training=self.training)
-        # logits = self.lin(h)
-        # if labels is not None:
-        #     loss = self.loss_function(logits, labels)
-        #     return loss, logits
-        # return logits
 
 
 class WordEmbeddingMLP(nn.Module):

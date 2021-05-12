@@ -14,6 +14,8 @@ import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import numpy as np
+
+import scipy.sparse as sp
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -33,6 +35,11 @@ from transformers import DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST,\
 
 
 from sklearn.metrics import f1_score
+from sklearn.feature_extraction.text import TfidfTransformer
+
+
+
+
 from tokenization import build_tokenizer_for_word_embeddings
 from data import load_data, load_word_vectors
 from models import GCN, MLP, TransformerForNodeClassification, collate_for_mlp
@@ -44,6 +51,7 @@ try:
 except ImportError:
     print("WandB not installed, to track experiments: pip install wandb")
     WANDB = False
+
 
 
 
@@ -70,6 +78,21 @@ MODEL_CLASSES = {
     # 'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaModel),
     'distilbert': (DistilBertConfig, DistilBertForSequenceClassification, DistilBertModel)
 }
+
+
+def inverse_document_frequency(encoded_docs, vocab_size):
+    """ Returns IDF scores in shape [vocab_size] """
+    num_docs = len(encoded_docs)
+    counts = sp.coo_matrix((num_docs, vocab_size))
+    for doc in tqdm(encoded_docs, desc="Computing IDF"):
+        for token in doc:
+            counts[doc,token] += 1
+
+    tfidf = TfidfTransformer(use_idf=True, smooth_idf=True)
+
+    tfidf.fit(counts)
+
+    return torch.tensor(tfidf.idf_)
 
 
 def pad(seqs, with_token=0, to_length=None):
@@ -265,7 +288,8 @@ def run_xy_model(args):
     print("Min/max document length:", (lens.min(), lens.max()))
     print("Mean document length: {:.4f} ({:.4f})".format(lens.mean(), lens.std()))
     assert len(enc_docs) == len(enc_labels) == train_mask.size(0) == test_mask.size(0)
-    enc_docs_arr, enc_labels_arr = np.array(enc_docs), np.array(enc_labels)
+    enc_docs_arr, enc_labels_arr = np.array(enc_docs, dtype='object'), np.array(enc_labels)
+
 
     train_data = list(zip(enc_docs_arr[train_mask], enc_labels_arr[train_mask]))
     test_data = list(zip(enc_docs_arr[test_mask], enc_labels_arr[test_mask]))
@@ -297,12 +321,20 @@ def run_xy_model(args):
         print("Initializing MLP")
 
         if use_word_embeddings:
+            if args.bow_aggregation == 'tfidf':
+                idf = inverse_document_frequency(enc_docs_arr[train_mask], tokenizer.vocab_size)
+            else:
+                idf = None
             print("Model: Word embeddings + MLP")
-            model = WordEmbeddingMLP(embedding, len(label2index))
+            model = WordEmbeddingMLP(embedding, len(label2index),
+                                     mode=args.bow_aggregation)
         else:
+            assert args.bow_aggregation != 'tfidf', "TFIDF not implemented for Pretrained embeddings"
             print("Model: Plain MLP")
             model = MLP(tokenizer.vocab_size, len(label2index),
-                        num_hidden_layers=args.mlp_num_layers)
+                        num_hidden_layers=args.mlp_num_layers,
+                        mode=args.bow_aggregation,
+                        idf=idf)
 
     model.to(args.device)
 
@@ -508,6 +540,8 @@ def main():
 
     # MLP Params
     parser.add_argument("--mlp_num_layers", default=1, type=int, help="Number of hidden layers within MLP")
+    parser.add_argument("--bow_aggregation", default="mean", choices=["mean", "sum", "tfidf"],
+            help="Aggregation for bag-of-words models (such as MLP)")
     args = parser.parse_args()
 
     if args.model_type in ['mlp', 'textgcn']:

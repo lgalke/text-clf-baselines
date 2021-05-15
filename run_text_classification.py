@@ -327,22 +327,14 @@ def run_xy_model(args):
         else:
             idf = None
 
-        if use_word_embeddings:
-            print("Model: Word embeddings + MLP")
-            print("freeze_embedding: ", args.freeze_embedding)
-            # model = WordEmbeddingMLP(embedding, len(label2index),
-            #                          mode=args.bow_aggregation)
-            model = MLP(None, len(label2index),
-                        num_hidden_layers=args.mlp_num_layers,
-                        mode=args.bow_aggregation,
-                        pretrained_embedding=embedding, idf=idf,
-                        freeze=args.freeze_embedding)
-        else:
-            print("Model: Plain MLP")
-            model = MLP(tokenizer.vocab_size, len(label2index),
-                        num_hidden_layers=args.mlp_num_layers,
-                        mode=args.bow_aggregation,
-                        idf=idf)
+        model = MLP(None, len(label2index),
+                    num_hidden_layers=args.mlp_num_layers,
+                    hidden_size=args.mlp_hidden_size,
+                    embedding_dropout=args.mlp_embedding_dropout,
+                    dropout=args.mlp_dropout,
+                    mode=args.bow_aggregation,
+                    pretrained_embedding=embedding, idf=idf,
+                    freeze=args.freeze_embedding)
 
     model.to(args.device)
 
@@ -550,8 +542,13 @@ def main():
 
     # MLP Params
     parser.add_argument("--mlp_num_layers", default=1, type=int, help="Number of hidden layers within MLP")
+    parser.add_argument("--mlp_hidden_size", default=1024, type=int, help="Hidden dimension for MLP")
     parser.add_argument("--bow_aggregation", default="mean", choices=["mean", "sum", "tfidf"],
             help="Aggregation for bag-of-words models (such as MLP)")
+    parser.add_argument("--mlp_embedding_dropout", default=0.5, type=float, help="Dropout for embedding / first hidden layer ")
+    parser.add_argument("--mlp_dropout", default=0.5, type=float, help="Dropout for all subsequent layers")
+
+    parser.add_argument("--comment", help="Some comment for the experiment")
     args = parser.parse_args()
 
     if args.model_type in ['mlp', 'textgcn']:

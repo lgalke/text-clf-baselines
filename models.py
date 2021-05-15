@@ -44,7 +44,8 @@ class MLP(nn.Module):
                  num_hidden_layers=1,
                  hidden_size=1024, hidden_act='relu',
                  dropout=0.5, idf=None, mode='mean',
-                 pretrained_embedding=None, freeze=True):
+                 pretrained_embedding=None, freeze=True,
+                 embedding_dropout=0.5):
         nn.Module.__init__(self)
         # Treat TF-IDF mode appropriately
         mode = 'sum' if idf is not None else mode
@@ -55,12 +56,15 @@ class MLP(nn.Module):
             # vocabsize is defined by embedding in this case
             self.embed = nn.EmbeddingBag.from_pretrained(pretrained_embedding, freeze=freeze, mode=mode)
             embedding_size = pretrained_embedding.size(1)
+            self.embedding_is_pretrained = True
         else:
             assert vocab_size is not None
             self.embed = nn.EmbeddingBag(vocab_size, hidden_size, mode=mode) 
             embedding_size = hidden_size
+            self.embedding_is_pretrained = False
 
         self.activation = getattr(F, hidden_act)
+        self.embedding_dropout = nn.Dropout(embedding_dropout)
         self.dropout = nn.Dropout(dropout)
         self.layers = nn.ModuleList()
 
@@ -87,11 +91,19 @@ class MLP(nn.Module):
             # In the TF-IDF case: renormalize according to l2 norm
             h = h / torch.linalg.norm(h, dim=1, keepdim=True)
 
-        for layer in self.layers:
-            # at least one
+        if not self.embedding_is_pretrained:
+            # No nonlinearity when embedding is pretrained
             h = self.activation(h)
-            h = self.dropout(h)
+
+        h = self.embedding_dropout(h)
+
+        for i, layer in enumerate(self.layers):
+            # at least one
             h = layer(h)
+            if i != len(self.layers) - 1:
+                # No activation/dropout for final layer
+                h = self.activation(h)
+                h = self.dropout(h)
 
         if labels is not None:
             loss = self.loss_function(h, labels)

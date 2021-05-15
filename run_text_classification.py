@@ -83,16 +83,16 @@ MODEL_CLASSES = {
 def inverse_document_frequency(encoded_docs, vocab_size):
     """ Returns IDF scores in shape [vocab_size] """
     num_docs = len(encoded_docs)
-    counts = sp.coo_matrix((num_docs, vocab_size))
-    for doc in tqdm(encoded_docs, desc="Computing IDF"):
-        for token in doc:
-            counts[doc,token] += 1
+    counts = sp.dok_matrix((num_docs, vocab_size))
+    for i, doc in tqdm(enumerate(encoded_docs), desc="Computing IDF"):
+        for j in doc:
+            counts[i,j] += 1
 
     tfidf = TfidfTransformer(use_idf=True, smooth_idf=True)
 
     tfidf.fit(counts)
 
-    return torch.tensor(tfidf.idf_)
+    return torch.FloatTensor(tfidf.idf_)
 
 
 def pad(seqs, with_token=0, to_length=None):
@@ -319,17 +319,22 @@ def run_xy_model(args):
                                             cache_dir=CACHE_DIR)
     else:
         print("Initializing MLP")
+        if args.bow_aggregation == 'tfidf':
+            idf = inverse_document_frequency(enc_docs_arr[train_mask], tokenizer.vocab_size).to(args.device)
+        else:
+            idf = None
 
         if use_word_embeddings:
-            if args.bow_aggregation == 'tfidf':
-                idf = inverse_document_frequency(enc_docs_arr[train_mask], tokenizer.vocab_size)
-            else:
-                idf = None
             print("Model: Word embeddings + MLP")
-            model = WordEmbeddingMLP(embedding, len(label2index),
-                                     mode=args.bow_aggregation)
+            print("freeze_embedding: ", args.freeze_embedding)
+            # model = WordEmbeddingMLP(embedding, len(label2index),
+            #                          mode=args.bow_aggregation)
+            model = MLP(None, len(label2index),
+                        num_hidden_layers=args.mlp_num_layers,
+                        mode=args.bow_aggregation,
+                        pretrained_embedding=embedding, idf=idf,
+                        freeze=args.freeze_embedding)
         else:
-            assert args.bow_aggregation != 'tfidf', "TFIDF not implemented for Pretrained embeddings"
             print("Model: Plain MLP")
             model = MLP(tokenizer.vocab_size, len(label2index),
                         num_hidden_layers=args.mlp_num_layers,
@@ -515,6 +520,8 @@ def main():
     parser.add_argument('--logging_steps', type=int, default=50,
                         help="Log every X updates steps.")
 
+    parser.add_argument('--unfreeze_embedding', dest="freeze_embedding", default=True,
+            action='store_false', help="Allow updating pretrained embeddings")
 
     ## Training Hyperparameters
     parser.add_argument("--learning_rate", default=5e-5, type=float,

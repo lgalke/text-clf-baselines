@@ -43,26 +43,36 @@ class MLP(nn.Module):
     def __init__(self, vocab_size, num_classes,
                  num_hidden_layers=1,
                  hidden_size=1024, hidden_act='relu',
-                 dropout=0.5, idf=None, mode='mean'):
+                 dropout=0.5, idf=None, mode='mean',
+                 pretrained_embedding=None, freeze=True):
         nn.Module.__init__(self)
         # Treat TF-IDF mode appropriately
         mode = 'sum' if idf is not None else mode
         self.idf = idf
 
         # Input-to-hidden (efficient via embedding bag)
-        self.embed = nn.EmbeddingBag(vocab_size, hidden_size,
-                                     mode=mode)
+        if pretrained_embedding is not None:
+            # vocabsize is defined by embedding in this case
+            self.embed = nn.EmbeddingBag.from_pretrained(pretrained_embedding, freeze=freeze, mode=mode)
+            embedding_size = pretrained_embedding.size(1)
+        else:
+            assert vocab_size is not None
+            self.embed = nn.EmbeddingBag(vocab_size, hidden_size, mode=mode) 
+            embedding_size = hidden_size
 
         self.activation = getattr(F, hidden_act)
         self.dropout = nn.Dropout(dropout)
         self.layers = nn.ModuleList()
 
         # Hidden-to-hidden
-        for __ in range(num_hidden_layers - 1):
-            self.layers.append(nn.Linear(hidden_size, hidden_size))
+        for i in range(num_hidden_layers - 1):
+            if i == 0:
+                self.layers.append(nn.Linear(embedding_size, hidden_size))
+            else:
+                self.layers.append(nn.Linear(hidden_size, hidden_size))
 
         # Hidden-to-output
-        self.layers.append(nn.Linear(hidden_size, num_classes))
+        self.layers.append(nn.Linear(hidden_size if self.layers else embedding_size, num_classes))
 
         # Loss function
         self.loss_function = nn.CrossEntropyLoss()
@@ -71,7 +81,7 @@ class MLP(nn.Module):
         # Use idf weights if present
         idf_weights = self.idf[input] if self.idf is not None else None
 
-        h = self.embed(input, offsets, per_index_weights=idf_weights)
+        h = self.embed(input, offsets, per_sample_weights=idf_weights)
 
         if self.idf is not None:
             # In the TF-IDF case: renormalize according to l2 norm
@@ -90,7 +100,9 @@ class MLP(nn.Module):
 
 
 class WordEmbeddingMLP(nn.Module):
-    """ Word Embedding + MLP """
+    """ Word Embedding + MLP 
+    DEPRECATED:
+        Use MLP() with pretrained_embeddings instead"""
     def __init__(self, embeddings, num_classes,
                  hidden_size=1024, hidden_act='relu',
                  dropout=0.5, mode='mean'):

@@ -255,17 +255,13 @@ def run_xy_model(args):
 
     if args.model_type == "mlp" and args.model_name_or_path is not None:
         print("Assuming to use word embeddings as both model_type=mlp and model_name_or_path are given")
-        use_word_embeddings = True
-    else:
-        use_word_embeddings = False
-
-    if use_word_embeddings:
         print("Using word embeddings -> forcing wordlevel tokenizer")
         vocab, embedding = load_word_vectors(args.model_name_or_path, unk_token="[UNK]")
         tokenizer = build_tokenizer_for_word_embeddings(vocab)
     else:
         tokenizer_name = args.tokenizer_name if args.tokenizer_name else args.model_name_or_path
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        embedding = None
     print("Using tokenizer:", tokenizer)
 
     do_truncate = not (args.stats_and_exit or args.model_type == 'mlp')
@@ -319,6 +315,13 @@ def run_xy_model(args):
                                             cache_dir=CACHE_DIR)
     else:
         print("Initializing MLP")
+
+        if embedding is not None:
+            # Vocab size given by embedding
+            vocab_size = None 
+        else:
+            vocab_size = tokenizer.vocab_size
+
         if args.bow_aggregation == 'tfidf':
             idf = inverse_document_frequency(enc_docs_arr[train_mask], tokenizer.vocab_size).to(args.device)
         else:

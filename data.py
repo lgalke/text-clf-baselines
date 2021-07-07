@@ -2,7 +2,6 @@ import os.path as osp
 
 import numpy as np
 import torch
-import torch_geometric
 import zipfile
 from joblib import Memory
 from tqdm import tqdm
@@ -94,6 +93,8 @@ def load_data(key, tokenizer, max_length=None, construct_textgraph=False, n_jobs
     if not construct_textgraph:
         return docs, label_ids, train_mask, test_mask, label2index
 
+    # ONLY NOW we need geometric
+    import torch_geometric
     vocab_size, pad_token_id = tokenizer.vocab_size, tokenizer.pad_token_id
     textgraph = TextGraph(vocab_size, window_size=20,
                    padding_idx=pad_token_id, format='coo',

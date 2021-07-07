@@ -1,8 +1,8 @@
 """
 File: run_text_classification.py
-Author: Lukas Galke
-Email: vim@lpag.de
-Github: https://github.com/lgalke
+Author: ANONYMIZED
+Email: ANONYMIZED
+Github: ANONYMIZED
 Description: Run text classification experiments on TextGCN's datasets
 """
 
@@ -42,8 +42,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 
 from tokenization import build_tokenizer_for_word_embeddings
 from data import load_data, load_word_vectors
-from models import GCN, MLP, TransformerForNodeClassification, collate_for_mlp
-from models import WordEmbeddingMLP
+from models import MLP, collate_for_mlp
 
 try:
     import wandb
@@ -61,8 +60,7 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 
 logger = logging.getLogger(__name__)
 USE_CUDA = torch.cuda.is_available()
-# CACHE_DIR = '/data21/lgalke/tmp/gnlp'
-CACHE_DIR = '/media/nvme1n1/lgalke/cache/textclf'
+CACHE_DIR = 'cache/textclf'
 MEMORY = Memory(CACHE_DIR, verbose=2)
 
 VALID_DATASETS = [ '20ng', 'R8', 'R52', 'ohsumed', 'mr'] + ['TREC', 'wiki']
@@ -323,17 +321,19 @@ def run_xy_model(args):
             vocab_size = tokenizer.vocab_size
 
         if args.bow_aggregation == 'tfidf':
+            print("Using IDF")
             idf = inverse_document_frequency(enc_docs_arr[train_mask], tokenizer.vocab_size).to(args.device)
         else:
             idf = None
 
-        model = MLP(None, len(label2index),
+        model = MLP(vocab_size, len(label2index),
                     num_hidden_layers=args.mlp_num_layers,
                     hidden_size=args.mlp_hidden_size,
                     embedding_dropout=args.mlp_embedding_dropout,
                     dropout=args.mlp_dropout,
                     mode=args.bow_aggregation,
-                    pretrained_embedding=embedding, idf=idf,
+                    pretrained_embedding=embedding,
+                    idf=idf,
                     freeze=args.freeze_embedding)
 
     model.to(args.device)
@@ -350,6 +350,7 @@ def run_xy_model(args):
 
 
 def run_axy_model(args):
+    raise NotImplementedError("We did not run TextGCN ourselves. This implementation is deprecated. Please use --model_type mlp or distilbert")
     print("Loading data...")
     tokenizer_name = args.tokenizer_name if args.tokenizer_name else args.model_name_or_path
 
@@ -497,11 +498,10 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('dataset', choices=VALID_DATASETS)
     parser.add_argument("--model_type", default=None, type=str, required=True,
-                        help="Model type selected in the list: mlp, textgcn, " + ", ".join(MODEL_CLASSES.keys()))
+                        help="Model type: either 'mlp' or 'distilbert'",
+                        choices=["mlp", "distilbert"])
     parser.add_argument("--model_name_or_path", default=None, type=str,
-                        help="Path to pre-trained model or shortcut name selected in the list: " + ", ".join(ALL_MODELS))
-    # parser.add_argument("--output_dir", default=None, type=str, required=True,
-    #                     help="The output directory where the model predictions and checkpoints will be written.")
+                        help="Optional path to word embedding with model type 'mlp' OR huggingface shortcut name such as distilbert-base-uncased for model type 'distilbert'")
     parser.add_argument("--results_file", default=None,
                         help="Store results to this results file")
 

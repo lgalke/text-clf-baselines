@@ -1,6 +1,9 @@
 from sklearn.feature_extraction.text import TfidfTransformer
 import scipy.sparse as sp
 from joblib import Parallel, delayed
+"""
+We did not use this code for the experiments because we only run MLP and DistilBERT ourselves, which don't need a text-graph.
+"""
 
 def count_ww_dw(docs, vocab_size, window_size, padding_idx=None):
     """ Count word cooccurrences """

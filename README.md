@@ -1,4 +1,4 @@
-# Forget me not: A Gentle Reminder to Mind the SimpleMulti-Layer Perceptron Baseline for Text Classification -- Code for Experiments
+# Forget me not: A Gentle Reminder to Mind the Simple Multi-Layer Perceptron Baseline for Text Classification -- Code for Experiments
 
 ## Get up and running
 

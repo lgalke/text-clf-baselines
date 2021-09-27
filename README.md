@@ -2,7 +2,7 @@
 
 If you use this code for your research, please consider citing:
 
-```
+```bibtex
 @misc{galke2021forget,
       title={Forget me not: A Gentle Reminder to Mind the Simple Multi-Layer Perceptron Baseline for Text Classification}, 
       author={Lukas Galke and Ansgar Scherp},

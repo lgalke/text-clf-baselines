@@ -1,5 +1,18 @@
 # Forget me not: A Gentle Reminder to Mind the Simple Multi-Layer Perceptron Baseline for Text Classification -- Code for Experiments
 
+If you use this code for your research, please consider citing:
+
+```
+@misc{galke2021forget,
+      title={Forget me not: A Gentle Reminder to Mind the Simple Multi-Layer Perceptron Baseline for Text Classification}, 
+      author={Lukas Galke and Ansgar Scherp},
+      year={2021},
+      eprint={2109.03777},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
+
 ## Get up and running
 
 1. Download the data folder from the [TextGCN repository](https://github.com/yao8839836/text_gcn) and make sure that the data is placed into a subfolder `./data` in the exact same directory structure. *This is not our repository, so this does **not** de-anonymize us.*

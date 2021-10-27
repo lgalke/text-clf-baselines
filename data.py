@@ -79,8 +79,11 @@ def load_data(key, tokenizer, max_length=None, construct_textgraph=False, n_jobs
 
     if max_length:
         print(f"Encoding documents with max_length={max_length}...")
-        docs = [tokenizer.encode(raw_doc, max_length=max_length) for raw_doc in raw_documents]
+        # docs = [tokenizer.encode(raw_doc, max_length=max_length) for raw_doc in raw_documents]
         # docs = tokenizer(raw_documents, truncation=True, max_length=max_length)
+
+        # Now use truncation=True (continued experiments with seq2mat)
+        docs = [tokenizer.encode(raw_doc, truncation=True, max_length=max_length) for raw_doc in raw_documents]
     else:
         print(f"Encoding documents without max_length")
         docs = [tokenizer.encode(raw_doc) for raw_doc in raw_documents]

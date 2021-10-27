@@ -1,4 +1,17 @@
-# Forget me not: A Gentle Reminder to Mind the SimpleMulti-Layer Perceptron Baseline for Text Classification -- Code for Experiments
+# Forget me not: A Gentle Reminder to Mind the Simple Multi-Layer Perceptron Baseline for Text Classification -- Code for Experiments
+
+If you use this code for your research, please consider citing:
+
+```bibtex
+@misc{galke2021forget,
+      title={Forget me not: A Gentle Reminder to Mind the Simple Multi-Layer Perceptron Baseline for Text Classification}, 
+      author={Lukas Galke and Ansgar Scherp},
+      year={2021},
+      eprint={2109.03777},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
 
 ## Get up and running
 

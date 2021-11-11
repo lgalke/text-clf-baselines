@@ -41,7 +41,7 @@ from sklearn.feature_extraction.text import TfidfTransformer
 
 
 from tokenization import build_tokenizer_for_word_embeddings
-from data import load_data, load_word_vectors
+from data import load_data, load_word_vectors, shuffle_augment
 from models import MLP, collate_for_mlp
 
 
@@ -144,6 +144,15 @@ def train(args,  train_data, model, tokenizer):
     scheduler = get_linear_schedule_with_warmup(optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
     writer = SummaryWriter()
 
+    if args.ignore_position_ids:
+        print("Setting position ids to zero and ignoring grad")
+        if args.model_type == 'bert':
+            model.bert.embeddings.position_embeddings.weight.requires_grad = False
+            model.bert.embeddings.position_embeddings.weight.zero_()
+        else:
+            raise NotImplementedError("Ignore position ids only implemented for BERT")
+
+
     # Train!
     logger.info("***** Running training *****")
     logger.info("  Num examples = %d", len(train_data))
@@ -164,13 +173,22 @@ def train(args,  train_data, model, tokenizer):
             model.train()
             batch = tuple(t.to(args.device) for t in batch)
             if args.model_type == 'mlp':
+                # Batch: torch.tensor(flat_docs), torch.tensor(offsets), torch.tensor(labels)
                 outputs = model(batch[0], batch[1], batch[2])
             else:
+                # Batch : input_ids, attention_mask, token_type_ids, labels
                 inputs = {'input_ids':      batch[0],
                           'attention_mask': batch[1],
                           'labels':         batch[3]}
                 if args.model_type != 'distilbert':
                     inputs['token_type_ids'] = batch[2] if args.model_type in ['bert', 'xlnet'] else None  # XLM, DistilBERT and RoBERTa don't use segment_ids
+                if args.ignore_position_ids:
+                    inputs['position_ids'] = torch.zeros(
+                        inputs['input_ids'].shape[0],  # bsz
+                        inputs['input_ids'].shape[1],  # len
+                        device=inputs['input_ids'].device,
+                        dtype=torch.long
+                    )
                 outputs = model(**inputs)
             loss = outputs[0]
             if args.gradient_accumulation_steps > 1:
@@ -293,15 +311,34 @@ def run_xy_model(args):
     assert len(enc_docs) == len(enc_labels) == train_mask.size(0) == test_mask.size(0)
     enc_docs_arr, enc_labels_arr = np.array(enc_docs, dtype='object'), np.array(enc_labels)
 
+    train_docs = enc_docs_arr[train_mask]
+    train_labels = enc_labels_arr[train_mask]
 
-    train_data = list(zip(enc_docs_arr[train_mask], enc_labels_arr[train_mask]))
+    if args.shuffle_augment:
+        factor = float(args.shuffle_augment)
+
+        # Generate new permuted documents
+        new_docs, new_labels = shuffle_augment(list(train_docs),
+                                               list(train_labels),
+                                               factor=factor,
+                                               random_seed=args.seed)
+
+        # Convert to numpy
+        new_docs = np.array(new_docs, dtype='object')
+        new_labels = np.array(new_labels)
+
+        # Augment the training data
+        train_docs = np.concatenate([train_docs, new_docs])
+        train_labels = np.concatenate([train_labels, new_labels])
+
+    train_data = list(zip(train_docs, train_labels))
+
     test_data = list(zip(enc_docs_arr[test_mask], enc_labels_arr[test_mask]))
 
     print("N", len(enc_docs))
     print("N train", len(train_data))
     print("N test", len(test_data))
     print("N classes", len(label2index))
-
 
     if args.stats_and_exit:
         print("Warning: length stats depend on tokenizer and max_length of model, chose MLP to avoid trimming before computing stats.")
@@ -577,6 +614,13 @@ def main():
     parser.add_argument("--seq2mat_max_length", help="Max length",
                         default=128, type=int)
 
+    parser.add_argument("--ignore_position_ids",
+                        help="Use all zeros to pos ids",
+                        default=False, action='store_true')
+    parser.add_argument("--seed", default=None,
+                        help="Random seed for shuffle augment")
+    parser.add_argument("--shuffle_augment", type=float,
+                        default=0, help="Factor for shuffle data augmentation")
     ##########################
     args = parser.parse_args()
 

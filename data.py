@@ -1,11 +1,11 @@
 import os.path as osp
+import random
 
 import numpy as np
 import torch
 import zipfile
 from joblib import Memory
 from tqdm import tqdm
-from transformers import AutoTokenizer
 
 from textgraph import TextGraph
 
@@ -150,3 +150,27 @@ def load_data(key, tokenizer, max_length=None, construct_textgraph=False, n_jobs
                                      dummy_label_id=dummy_label_id)
 
     return data
+
+def shuffle_augment(docs: list, labels: list,
+                    factor:float=1.0, random_seed=None):
+    assert factor > 0.0
+    if random_seed is not None:
+        random.seed(random_seed)
+    num_augment = int(len(docs) * factor)
+    print(f"Generating {num_augment} augmented documents...")
+
+    new_docs = []
+    new_labels = []
+
+    for __ in tqdm(range(num_augment)):
+        # Draw a document index
+        idx = random.sample(range(len(docs)), k=1)[0]
+        doc = docs[idx]
+
+        # Shuffle the words of the document (copy)
+        perm_doc = random.sample(doc, k=len(doc))
+
+        new_docs.append(perm_doc)  # Save the new document
+        new_labels.append(labels[idx])  # Copy over label from origin
+
+    return new_docs, new_labels

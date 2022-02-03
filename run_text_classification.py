@@ -53,13 +53,6 @@ except ImportError:
     WANDB = False
 
 
-from seq2mat_factory import load_seq2mat_tokenizer, load_seq2mat_for_sequence_classification
-
-from seq2mat import (Seq2matConfig,
-                     Seq2matModel,
-                     Seq2matForSequenceClassification)
-
-
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
@@ -80,8 +73,7 @@ MODEL_CLASSES = {
     # 'xlnet': (XLNetConfig, XLNetForSequenceClassification, XLNetModel),
     # 'xlm': (XLMConfig, XLMForSequenceClassification, XLMModel),
     # 'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaModel),
-    'distilbert': (DistilBertConfig, DistilBertForSequenceClassification, DistilBertModel),
-    'seq2mat': (Seq2matConfig, Seq2matForSequenceClassification, Seq2matModel)
+    'distilbert': (DistilBertConfig, DistilBertForSequenceClassification, DistilBertModel)
 }
 
 
@@ -293,8 +285,6 @@ def run_xy_model(args):
         max_length = None
     elif args.model_type == 'mlp':
         max_length = None
-    elif args.model_type == 'seq2mat':
-        max_length = args.seq2mat_max_length  # Seq2mat works better with shorter sequences
     else:
         max_length = 512 # should hold for all used transformer models?
 
@@ -345,30 +335,19 @@ def run_xy_model(args):
         exit(0)
 
     if args.model_type != 'mlp':
-        if args.model_type == "seq2mat":
-            print("Loading Seq2mat model from", args.model_name_or_path)
-            print("with config:", args.seq2mat_config)
-            model = load_seq2mat_for_sequence_classification(
-                config_path=args.seq2mat_config,
-                model_path=args.model_name_or_path,
-                num_labels=len(label2index),
-                num_sequences=1,
-                cache_dir=CACHE_DIR
-            )
-        else:
-            config_class, model_class, __ = MODEL_CLASSES[args.model_type]
-            print("Loading", args.model_type)
-            print("Loading config")
-            config = config_class.from_pretrained(args.model_name_or_path,
-                                                  num_labels=len(label2index),
-                                                  cache_dir=CACHE_DIR)
+        config_class, model_class, __ = MODEL_CLASSES[args.model_type]
+        print("Loading", args.model_type)
+        print("Loading config")
+        config = config_class.from_pretrained(args.model_name_or_path,
+                                              num_labels=len(label2index),
+                                              cache_dir=CACHE_DIR)
 
-            print(config)
-            print("Loading model")
-            model = model_class.from_pretrained(args.model_name_or_path,
-                                                from_tf=bool('.ckpt' in args.model_name_or_path),
-                                                config=config,
-                                                cache_dir=CACHE_DIR)
+        print(config)
+        print("Loading model")
+        model = model_class.from_pretrained(args.model_name_or_path,
+                                            from_tf=bool('.ckpt' in args.model_name_or_path),
+                                            config=config,
+                                            cache_dir=CACHE_DIR)
         # This is a ForSequenceClassification Model
     else:
         print("Initializing MLP")
@@ -558,7 +537,7 @@ def main():
     parser.add_argument('dataset', choices=VALID_DATASETS)
     parser.add_argument("--model_type", default=None, type=str, required=True,
                         help="Model type: either 'mlp' or 'distilbert'",
-                        choices=["mlp", "distilbert", "seq2mat", "bert"])
+                        choices=["mlp", "distilbert", "bert"])
     parser.add_argument("--model_name_or_path", default=None, type=str,
                         help="Optional path to word embedding with model type 'mlp' OR huggingface shortcut name such as distilbert-base-uncased for model type 'distilbert'")
     parser.add_argument("--results_file", default=None,
@@ -608,12 +587,6 @@ def main():
     parser.add_argument("--mlp_dropout", default=0.5, type=float, help="Dropout for all subsequent layers")
 
     parser.add_argument("--comment", help="Some comment for the experiment")
-    # Seq2mat params
-    parser.add_argument("--seq2mat_config", help="Path to config for seq2mat",
-                        default=None)
-    parser.add_argument("--seq2mat_max_length", help="Max length",
-                        default=128, type=int)
-
     parser.add_argument("--ignore_position_ids",
                         help="Use all zeros to pos ids",
                         default=False, action='store_true')
@@ -627,10 +600,6 @@ def main():
 
     if args.model_type in ['mlp', 'textgcn']:
         assert args.tokenizer_name or args.model_name_or_path, "Please supply tokenizer for MLP via --tokenizer_name or provide an embedding via --model_name_or_path"
-    elif args.model_type in ['seq2mat']:
-        assert args.seq2mat_config, "Please provide a config for seq2mat"
-        args.tokenizer_name = "bert-base-uncased"
-        print("Using Seq2mat model. Forcing tokenizer_name = 'bert-base-uncased'")
     else:
         assert args.model_name_or_path, f"Please supply --model_name_or_path for {args.model_type}"
 
@@ -645,7 +614,6 @@ def main():
         'mlp': run_xy_model,
         'bert': run_xy_model,
         'distilbert': run_xy_model,
-        'seq2mat': run_xy_model,
         'roberta': run_xy_model,
         'xlnet': run_xy_model,
         'textgcn': run_axy_model,

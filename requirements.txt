@@ -4,6 +4,6 @@ transformers
 tqdm
 joblib
 tokenizers
-skikit-learn
+scikit-learn
 scipy
 tensorboard

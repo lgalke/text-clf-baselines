@@ -470,8 +470,7 @@ def main():
         'bert': run_xy_model,
         'distilbert': run_xy_model,
         'roberta': run_xy_model,
-        'xlnet': run_xy_model,
-        'textgcn': run_axy_model,
+        'xlnet': run_xy_model
     }[args.model_type](args)
     if args.results_file:
         with open(args.results_file, 'a', newline='') as csvfile:

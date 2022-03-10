@@ -2,6 +2,8 @@
 
 *Code for the experiments*
 
+**Update:** Paper accepted for ACL 2022.
+
 If you use this code for your research, please consider citing:
 
 ```bibtex
@@ -16,7 +18,6 @@ If you use this code for your research, please consider citing:
 
 ```
 
-Update: Paper accepted for ACL 2022.
 
 ## Get up and running
 

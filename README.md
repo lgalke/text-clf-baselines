@@ -5,15 +5,20 @@
 If you use this code for your research, please consider citing:
 
 ```bibtex
-@misc{galke2021forget,
-      title={Forget me not: A Gentle Reminder to Mind the Simple Multi-Layer Perceptron Baseline for Text Classification}, 
-      author={Lukas Galke and Ansgar Scherp},
-      year={2021},
-      eprint={2109.03777},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+@inproceedings{galke-scherp-2022-widemlp,
+    title = "Bag-of-Words vs. Graph vs. Sequence in Text Classification: Questioning the Necessity of Text-Graphs and the Surprising Strength of a Wide MLP
+",
+    author = "Galke, Lukas  and
+      Scherp, Ansgar",
+    booktitle = "Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers)",
+    year = "2022",
+    address = "Online",
+    publisher = "Association for Computational Linguistics",
 }
+
 ```
+
+Update: Paper accepted for ACL 2020.
 
 ## Get up and running
 

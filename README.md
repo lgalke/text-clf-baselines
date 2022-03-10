@@ -16,7 +16,7 @@ If you use this code for your research, please consider citing:
 
 ```
 
-Update: Paper accepted for ACL 2020.
+Update: Paper accepted for ACL 2022.
 
 ## Get up and running
 

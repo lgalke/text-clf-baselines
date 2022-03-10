@@ -1,4 +1,6 @@
-# Forget me not: A Gentle Reminder to Mind the Simple Multi-Layer Perceptron Baseline for Text Classification -- Code for Experiments
+# Bag-of-Words vs. Graph vs. Sequence in Text Classification: Questioning the Necessity of Text-Graphs and the Surprising Strength of a Wide MLP
+
+*Code for the experiments*
 
 If you use this code for your research, please consider citing:
 

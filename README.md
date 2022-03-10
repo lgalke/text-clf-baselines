@@ -15,7 +15,7 @@ If you use this code for your research, please consider citing:
 
 ## Get up and running
 
-1. Download the data folder from the [TextGCN repository](https://github.com/yao8839836/text_gcn) and make sure that the data is placed into a subfolder `./data` in the exact same directory structure.
+1. Download the data folder from the [TextGCN repository](https://github.com/lgalke/text_gcn) and make sure that the data is placed into a subfolder `./data` in the exact same directory structure.
 
 2. Check for static paths such as `CACHE_DIR`in `run_text_classification.py` and the path to GloVe vectors in the /experiments dir
 

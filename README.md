@@ -38,4 +38,4 @@ If you use this code for your research, please consider citing:
 
 The script run\_text\_classification.py is the main entry point for running an experiment.
 Train test split is used as-is from the datasets of TextGCN.
-Within the experiments folder, you find the bash scripts that we used for the experiments.
+Within the experiments folder, you find the bash scripts that we used for the experiments from the paper.

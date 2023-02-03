@@ -33,7 +33,7 @@ If you use this code for your research, please consider citing:
 
 ## Code overview
 
-- In `models.py`, you find our implementation for the SimpleMLP.
+- In `models.py`, you find our implementation for the WideMLP.
 - In `data.py`, you find the `load_data()` function which, does the data loading. Valid datasets are: `[ '20ng', 'R8', 'R52', 'ohsumed', 'mr']
 - In `tokenization.py` you find our tokenizer implementation for the GloVe model. For other models, use BERT's tokenizer and vocab
 - The code contains some artefacts from creating a textgraph ourselves, but in the end we did not run own experiments that needed it.

@@ -407,8 +407,7 @@ def run_xy_model(args):
         print("Loading", args.model_type)
         print("Loading config")
         config = config_class.from_pretrained(
-            args.model_name_or_path, num_labels=len(label2index), cache_dir=CACHE_DIR
-        )
+            args.model_name_or_path, num_labels=len(label2index))
 
         print(config)
         print("Loading model")
@@ -416,7 +415,6 @@ def run_xy_model(args):
             args.model_name_or_path,
             from_tf=bool(".ckpt" in args.model_name_or_path),
             config=config,
-            cache_dir=CACHE_DIR,
         )
         # This is a ForSequenceClassification Model
         if args.ein:

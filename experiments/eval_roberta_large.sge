@@ -1,4 +1,11 @@
-#!/usr/bin/env bash
+#!/bin/bash
+#$ -N textclf-roberta-large
+#$ -cwd
+#$ -q cuda.q
+#$ -S /bin/bash
+#$ -M lukas.galke@mpi.nl
+#$ -m beas
+
 MODEL_TYPE="bert"
 MODEL_NAME_OR_PATH="roberta-large"
 # Effective batch size should be 128

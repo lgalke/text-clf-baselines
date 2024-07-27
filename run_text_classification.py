@@ -1,8 +1,8 @@
 """
 File: run_text_classification.py
-Author: ANONYMIZED
-Email: ANONYMIZED
-Github: ANONYMIZED
+Author: Lukas Galke
+Email: git@lpag.de
+Github: lgalke
 Description: Run text classification experiments on TextGCN's datasets
 """
 
@@ -28,10 +28,6 @@ from transformers import (WEIGHTS_NAME, AdamW, AutoTokenizer, BertConfig,
                           BertTokenizer, DistilBertConfig,
                           DistilBertForSequenceClassification, DistilBertModel,
                           DistilBertTokenizer, get_linear_schedule_with_warmup)
-
-from transformers import DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST,\
-    BERT_PRETRAINED_MODEL_ARCHIVE_LIST
-
 
 from sklearn.metrics import f1_score
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -63,10 +59,6 @@ MEMORY = Memory(CACHE_DIR, verbose=2)
 
 VALID_DATASETS = [ '20ng', 'R8', 'R52', 'ohsumed', 'mr'] + ['TREC', 'wiki']
 
-# ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig,
-#                                                                                 RobertaConfig, DistilBertConfig)), ())
-
-ALL_MODELS = BERT_PRETRAINED_MODEL_ARCHIVE_LIST + DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertModel),
     # 'xlnet': (XLNetConfig, XLNetForSequenceClassification, XLNetModel),

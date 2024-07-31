@@ -6,14 +6,14 @@
 #$ -M lukas.galke@mpi.nl
 #$ -m beas
 
-MODEL_TYPE="bert"
+MODEL_TYPE="roberta"
 MODEL_NAME_OR_PATH="roberta-large"
 # Effective batch size should be 128
 BATCH_SIZE=32
-GRADIENT_ACCUMULATION_STEPS=4
+GRADIENT_ACCUMULATION_STEPS=1
 EPOCHS=10
-RESULTS_FILE="results_roberta_10epochs.csv"
-LEARNING_RATE="0.00005"
+RESULTS_FILE="results_roberta_10epochs_lr1e-5.csv"
+LEARNING_RATE="0.00001"
 
 # Stop on error
 set -e

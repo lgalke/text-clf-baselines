@@ -61,9 +61,9 @@ VALID_DATASETS = [ '20ng', 'R8', 'R52', 'ohsumed', 'mr'] + ['TREC', 'wiki']
 
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertModel),
+    'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaModel),
     # 'xlnet': (XLNetConfig, XLNetForSequenceClassification, XLNetModel),
     # 'xlm': (XLMConfig, XLMForSequenceClassification, XLMModel),
-    # 'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaModel),
     'distilbert': (DistilBertConfig, DistilBertForSequenceClassification, DistilBertModel)
 }
 

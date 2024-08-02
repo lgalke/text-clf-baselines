@@ -27,7 +27,8 @@ from transformers import (WEIGHTS_NAME, AdamW, AutoTokenizer, BertConfig,
                           BertForSequenceClassification, BertModel,
                           BertTokenizer, DistilBertConfig,
                           DistilBertForSequenceClassification, DistilBertModel,
-                          DistilBertTokenizer, get_linear_schedule_with_warmup)
+                          DistilBertTokenizer, get_linear_schedule_with_warmup,
+                          RobertaConfig, RobertaForSequenceClassification, RobertaModel)
 
 from sklearn.metrics import f1_score
 from sklearn.feature_extraction.text import TfidfTransformer

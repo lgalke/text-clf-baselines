@@ -385,7 +385,7 @@ def main():
     parser.add_argument('dataset', choices=VALID_DATASETS)
     parser.add_argument("--model_type", default=None, type=str, required=True,
                         help="Model type: either 'mlp' or 'distilbert'",
-                        choices=["mlp", "distilbert", "bert"])
+                        choices=["mlp", "distilbert", "bert", "roberta"])
     parser.add_argument("--model_name_or_path", default=None, type=str,
                         help="Optional path to word embedding with model type 'mlp' OR huggingface shortcut name such as distilbert-base-uncased for model type 'distilbert'")
     parser.add_argument("--results_file", default=None,

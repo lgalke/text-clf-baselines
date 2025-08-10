@@ -7,6 +7,9 @@ from sklearn.metrics import accuracy_score
 from data import load_data
 from transformers import AutoTokenizer
 
+from sklearn.ensemble import GradientBoostingClassifier, HistGradientBoostingClassifier
+
+
 ngram_range = (1,1)
 tokenizer_name = 'bert-base-uncased'
 tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
@@ -34,15 +37,17 @@ for dataset_name in [ '20ng', 'R8', 'R52', 'ohsumed', 'mr']:
     x_train = tfidf.fit_transform(raw_docs[train_mask])  # Only fit idf on train
     x_test = tfidf.transform(raw_docs[test_mask])
 
-    svm = LinearSVC()
+    classifier = GradientBoostingClassifier()
 
-    svm.fit(x_train, y_train)
+    classifier.fit(x_train, y_train)
 
-    y_pred = svm.predict(x_test)
+    y_pred = classifier.predict(x_test)
 
     accuracy = accuracy_score(y_test, y_pred)
     print(dataset_name, accuracy)
     results[dataset_name] = accuracy
 
+
 print(f"ngram_range = {ngram_range} ")
 print(results)
+print(classifier)

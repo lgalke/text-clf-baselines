@@ -1,8 +1,8 @@
 """
 File: run_text_classification.py
-Author: ANONYMIZED
-Email: ANONYMIZED
-Github: ANONYMIZED
+Author: Lukas Galke
+Email: git@lpag.de
+Github: lgalke
 Description: Run text classification experiments on TextGCN's datasets
 """
 
@@ -27,11 +27,8 @@ from transformers import (WEIGHTS_NAME, AdamW, AutoTokenizer, BertConfig,
                           BertForSequenceClassification, BertModel,
                           BertTokenizer, DistilBertConfig,
                           DistilBertForSequenceClassification, DistilBertModel,
-                          DistilBertTokenizer, get_linear_schedule_with_warmup)
-
-from transformers import DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST,\
-    BERT_PRETRAINED_MODEL_ARCHIVE_LIST
-
+                          DistilBertTokenizer, get_linear_schedule_with_warmup,
+                          RobertaConfig, RobertaForSequenceClassification, RobertaModel)
 
 from sklearn.metrics import f1_score
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -63,15 +60,11 @@ MEMORY = Memory(CACHE_DIR, verbose=2)
 
 VALID_DATASETS = [ '20ng', 'R8', 'R52', 'ohsumed', 'mr'] + ['TREC', 'wiki']
 
-# ALL_MODELS = sum((tuple(conf.pretrained_config_archive_map.keys()) for conf in (BertConfig, XLNetConfig, XLMConfig,
-#                                                                                 RobertaConfig, DistilBertConfig)), ())
-
-ALL_MODELS = BERT_PRETRAINED_MODEL_ARCHIVE_LIST + DISTILBERT_PRETRAINED_MODEL_ARCHIVE_LIST
 MODEL_CLASSES = {
     'bert': (BertConfig, BertForSequenceClassification, BertModel),
+    'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaModel),
     # 'xlnet': (XLNetConfig, XLNetForSequenceClassification, XLNetModel),
     # 'xlm': (XLMConfig, XLMForSequenceClassification, XLMModel),
-    # 'roberta': (RobertaConfig, RobertaForSequenceClassification, RobertaModel),
     'distilbert': (DistilBertConfig, DistilBertForSequenceClassification, DistilBertModel)
 }
 
@@ -392,7 +385,7 @@ def main():
     parser.add_argument('dataset', choices=VALID_DATASETS)
     parser.add_argument("--model_type", default=None, type=str, required=True,
                         help="Model type: either 'mlp' or 'distilbert'",
-                        choices=["mlp", "distilbert", "bert"])
+                        choices=["mlp", "distilbert", "bert", "roberta"])
     parser.add_argument("--model_name_or_path", default=None, type=str,
                         help="Optional path to word embedding with model type 'mlp' OR huggingface shortcut name such as distilbert-base-uncased for model type 'distilbert'")
     parser.add_argument("--results_file", default=None,

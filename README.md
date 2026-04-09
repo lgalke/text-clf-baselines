@@ -2,7 +2,8 @@
 
 *Code for the experiments*
 
-[Link to ACL 2022 paper](https://github.com/lgalke/text-clf-baselines)
+[Link to ACL 2022 paper](https://aclanthology.org/2022.acl-long.279/)
+
 
 If you use this code for your research, please consider citing:
 

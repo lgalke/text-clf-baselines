@@ -23,7 +23,8 @@ import transformers
 from joblib import Memory
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm, trange
-from transformers import (WEIGHTS_NAME, AdamW, AutoTokenizer, BertConfig,
+from transformers import (WEIGHTS_NAME, AdamW, AutoConfig, AutoModelForSequenceClassification,
+                          AutoTokenizer, BertConfig,
                           BertForSequenceClassification, BertModel,
                           BertTokenizer, DistilBertConfig,
                           DistilBertForSequenceClassification, DistilBertModel,
@@ -67,6 +68,8 @@ MODEL_CLASSES = {
     # 'xlm': (XLMConfig, XLMForSequenceClassification, XLMModel),
     'distilbert': (DistilBertConfig, DistilBertForSequenceClassification, DistilBertModel)
 }
+
+ENCODER_DECODER_TYPES = {'bart', 't5'}
 
 
 def inverse_document_frequency(encoded_docs, vocab_size):
@@ -164,8 +167,8 @@ def train(args,  train_data, model, tokenizer):
                 inputs = {'input_ids':      batch[0],
                           'attention_mask': batch[1],
                           'labels':         batch[3]}
-                if args.model_type != 'distilbert':
-                    inputs['token_type_ids'] = batch[2] if args.model_type in ['bert', 'xlnet'] else None  # XLM, DistilBERT and RoBERTa don't use segment_ids
+                if args.model_type in ('bert', 'xlnet'):
+                    inputs['token_type_ids'] = batch[2]
                 if args.ignore_position_ids:
                     inputs['position_ids'] = torch.zeros(
                         inputs['input_ids'].shape[0],  # bsz
@@ -231,8 +234,8 @@ def evaluate(args, dev_or_test_data, model, tokenizer):
                 inputs = {'input_ids':      batch[0],
                           'attention_mask': batch[1],
                           'labels':         batch[3]}
-                if args.model_type != 'distilbert':
-                    inputs['token_type_ids'] = batch[2] if args.model_type in ['bert', 'xlnet'] else None  # XLM, DistilBERT and RoBERTa don't use segment_ids
+                if args.model_type in ('bert', 'xlnet'):
+                    inputs['token_type_ids'] = batch[2]
                 outputs = model(**inputs)
                 all_targets.append(inputs['labels'].detach().cpu())
         nb_eval_steps += 1
@@ -326,7 +329,19 @@ def run_xy_model(args):
         print("Warning: length stats depend on tokenizer and max_length of model, chose MLP to avoid trimming before computing stats.")
         exit(0)
 
-    if args.model_type != 'mlp':
+    if args.model_type in ENCODER_DECODER_TYPES:
+        print("Loading", args.model_type)
+        print("Loading config")
+        config = AutoConfig.from_pretrained(args.model_name_or_path,
+                                            num_labels=len(label2index),
+                                            cache_dir=CACHE_DIR)
+        print(config)
+        print("Loading model")
+        model = AutoModelForSequenceClassification.from_pretrained(args.model_name_or_path,
+                                                                   config=config,
+                                                                   cache_dir=CACHE_DIR)
+        # This is a ForSequenceClassification Model
+    elif args.model_type != 'mlp':
         config_class, model_class, __ = MODEL_CLASSES[args.model_type]
         print("Loading", args.model_type)
         print("Loading config")
@@ -385,7 +400,7 @@ def main():
     parser.add_argument('dataset', choices=VALID_DATASETS)
     parser.add_argument("--model_type", default=None, type=str, required=True,
                         help="Model type: either 'mlp' or 'distilbert'",
-                        choices=["mlp", "distilbert", "bert", "roberta"])
+                        choices=["mlp", "distilbert", "bert", "roberta", "bart", "t5"])
     parser.add_argument("--model_name_or_path", default=None, type=str,
                         help="Optional path to word embedding with model type 'mlp' OR huggingface shortcut name such as distilbert-base-uncased for model type 'distilbert'")
     parser.add_argument("--results_file", default=None,
@@ -463,7 +478,9 @@ def main():
         'bert': run_xy_model,
         'distilbert': run_xy_model,
         'roberta': run_xy_model,
-        'xlnet': run_xy_model
+        'xlnet': run_xy_model,
+        'bart': run_xy_model,
+        't5': run_xy_model,
     }[args.model_type](args)
     if args.results_file:
         with open(args.results_file, 'a', newline='') as csvfile:

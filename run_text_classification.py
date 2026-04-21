@@ -20,10 +20,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import transformers
+from torch.optim import AdamW
 from joblib import Memory
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm, trange
-from transformers import (WEIGHTS_NAME, AdamW, AutoConfig, AutoModelForSequenceClassification,
+from transformers import (WEIGHTS_NAME, AutoConfig, AutoModelForSequenceClassification,
                           AutoTokenizer, BertConfig,
                           BertForSequenceClassification, BertModel,
                           BertTokenizer, DistilBertConfig,
